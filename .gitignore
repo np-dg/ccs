@@ -1,0 +1,12 @@
+/.direnv
+
+/.vscode
+
+/env/**/*.env
+
+node_modules
+
+.ipynb_checkpoints
+
+/.tests
+__pycache__
