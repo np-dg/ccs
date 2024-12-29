@@ -26,6 +26,7 @@ import time
 from functools import partial
 import random
 import string
+import math
 
 from communex.client import CommuneClient
 from communex.module.client import ModuleClient
@@ -213,7 +214,7 @@ class GPUTaskValidator(Module):
         self,
         task: Task,
         miner_info: tuple[list[str], Ss58Address],
-    ) -> TaskResult | None:
+    ) -> tuple[TaskResult | None, float]:
         """
         Prompt a miner module to execute given task.
 
@@ -227,8 +228,11 @@ class GPUTaskValidator(Module):
         connection, miner_key = miner_info
         module_ip, module_port = connection
         client = ModuleClient(module_ip, int(module_port), self.key)
+        response_time = self.call_timeout
         try:
             # handles the communication with the miner
+            start_time = time.time()
+
             miner_response = asyncio.run(
                 client.call(
                     "perform_task",
@@ -237,7 +241,8 @@ class GPUTaskValidator(Module):
                     timeout=self.call_timeout,  #  type: ignore
                 )
             )
-
+            end_time = time.time()
+            response_time = end_time - start_time
             miner_result = None
             if task.task_type == TaskType.POW:
                 miner_result = PowTaskResult.deserialize(miner_response)
@@ -248,25 +253,29 @@ class GPUTaskValidator(Module):
             print(e)
             miner_result = None
 
-        return miner_result
+        return miner_result, response_time
 
-    def _score_miner(self, miner_result: TaskResult | None) -> float:
+    def _score_miner(self, miner_result: TaskResult | None, response_time: float) -> float:
         """
         Validate and score the miner
 
         Args:
             miner_result: The result of the task from the miner module.
+            response_time: Response time of the miner.
 
         Returns:
             The score assigned to the miner's result.
         """
 
-        # Implement your custom scoring logic here
         if not miner_result or not self._validate_pow_task_result(miner_result):
             return 0
 
-        # TODO: score based on response time
-        return 1
+        network_delay_buffer = 2
+        alpha = 0.09
+        score_time = max(0, response_time - network_delay_buffer)
+        score = 0.5 + alpha * math.log(self.call_timeout - score_time + 2, 2)
+
+        return min(1, score)
 
     def _validate_pow_task_result(result: PowTaskResult) -> bool:
         return validate_pow(result)
@@ -331,7 +340,7 @@ class GPUTaskValidator(Module):
             miner_results = [*it]
 
         for uid, miner_response in zip(modules_info.keys(), miner_results):
-            miner_result = miner_response
+            miner_result, response_time = miner_response
             if not miner_result:
                 log(f"Skipping miner {uid} that didn't answer")
                 continue
@@ -340,7 +349,7 @@ class GPUTaskValidator(Module):
                 log(f"Skipping miner {uid} answered for wrong task.")
                 continue
 
-            score = self._score_miner(miner_result)
+            score = self._score_miner(miner_result, response_time)
             time.sleep(0.5)
             # score has to be lower or eq to 1, as one is the best score, you can implement your custom logic
             assert score <= 1
