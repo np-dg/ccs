@@ -31,7 +31,7 @@ class PowTask(Task):
     def deserialize(cls, serialized: str):
         task = json.loads(serialized)
 
-        return cls(task.data, task.difficulty)
+        return cls(task["data"], task["difficulty"])
 
     def __ne__(self, other):
         if not isinstance(other, PowTask):
@@ -62,7 +62,7 @@ class PowTaskResult(TaskResult):
 
     @classmethod
     def deserialize(cls, serialized: str):
-        task_result: PowTaskResult = json.loads(serialized)
-        task = PowTask.deserialize(task_result.task)
+        task_result = json.loads(serialized)
+        task = PowTask.deserialize(task_result["task"])
 
-        return cls(task, task_result.nonce)
+        return cls(task, task_result["nonce"])
