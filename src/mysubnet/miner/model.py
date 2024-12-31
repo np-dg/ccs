@@ -9,7 +9,7 @@ from ..tasks.tasks import PowTask, PowTaskResult, TaskType
 class Miner(Module):
     def __init__(self):
         super().__init__()
-        pow_gpu("a", 1)
+        pow_gpu("abcdefgh", 1)
 
     @endpoint
     def perform_task(self, task_type: str, task: str):

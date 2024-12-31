@@ -297,7 +297,7 @@ class GPUTaskValidator(Module):
         pow_task_space = string.ascii_letters + string.digits + string.punctuation
 
         difficulty = 4 * 4  # First 2 bytes unset
-        data = ''.join(random.choice(pow_task_space) for _ in range(1))
+        data = ''.join(random.choice(pow_task_space) for _ in range(8))
         return PowTask(data, difficulty)
 
     async def validate_step(

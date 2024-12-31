@@ -23,24 +23,32 @@ def hash(value: str):
 
 
 @cuda.jit
-def hash_kernel(values, nonces, result, target):
+def pow_kernel(values, nonces, result, target):
     q = uint64(18446744073709551557)
     k = uint64(3472328296227680304)
     c = uint64(8241990170776528228)
 
     idx = cuda.grid(1)
-    if idx < values.size:
-        value = values[idx]
+    if idx < nonces.size:
         nonce = nonces[idx]
-        x = uint64(value)
+        value = [uint64(values[0]), uint64(nonce)]
 
-        for _ in range(64):
-            x = x ^ k
-            x = x ^ c
-            x = uint64(x ** 3)
-            x = uint64(x % q)
+        def f(x, iv):
+            for _ in range(64):
+                x = x ^ iv
+                x = x ^ k
+                x = x ^ c
+                x = uint64(x ** 3)
+                x = uint64(x % q)
 
-        if x < target[0]:
+            return x
+
+        iv = 2**64 - 1
+        for x in value:
+            hash = f(x, iv)
+            iv = iv ^ hash
+
+        if hash < target[0]:
             prev = cuda.atomic.max(result, 1, 1)
             if prev == 0:
                 result[0] = nonce
@@ -69,20 +77,19 @@ def pow_gpu(data: str, difficulty: int) -> int:
                            batch_size, dtype=np.uint64)
         nonces_device = cuda.to_device(nonces)
 
-        # Prepare values as unsigned 64-bit integers
-        values = np.array([
-            int.from_bytes((data + str(nonce)).encode(), "big")
-            for nonce in nonces
+        # Prepare value as unsigned 64-bit integer
+        value = np.array([
+            int.from_bytes(data.encode(), "big")
         ], dtype=np.uint64)
-        values_device = cuda.to_device(values)
+        value_device = cuda.to_device(value)
 
         # Define CUDA kernel execution configuration
         threads_per_block = 256
-        blocks = (values.size + threads_per_block - 1) // threads_per_block
+        blocks = (nonces.size + threads_per_block - 1) // threads_per_block
 
         # Launch the CUDA kernel
-        hash_kernel[blocks, threads_per_block](
-            values_device, nonces_device, result_device, target_device
+        pow_kernel[blocks, threads_per_block](
+            value_device, nonces_device, result_device, target_device
         )
 
         # Copy the results back to the host
@@ -118,7 +125,7 @@ def validate_pow(result: PowTaskResult):
 
 if __name__ == "__main__":
     pool = string.ascii_letters + string.digits + string.punctuation
-    data = ''.join(random.choice(pool) for _ in range(1))
+    data = ''.join(random.choice(pool) for _ in range(8))
     start_time = time.time()
     nonce = pow_gpu(data, 3 * 4)
     end_time = time.time()
