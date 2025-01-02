@@ -13,7 +13,7 @@ def hash(value: str):
     k = np.uint64(3472328296227680304)
     c = np.uint64(8241990170776528228)
 
-    for _ in range(64):
+    for _ in range(256):
         x = x ^ k
         x = x ^ c
         x = np.uint64(x ** 3)
@@ -31,10 +31,13 @@ def pow_kernel(values, nonces, result, target):
     idx = cuda.grid(1)
     if idx < nonces.size:
         nonce = nonces[idx]
-        value = [uint64(values[0]), uint64(nonce)]
+        value = cuda.local.array(2, uint64)
+
+        value[0] = uint64(values[0])
+        value[1] = uint64(nonce)
 
         def f(x, iv):
-            for _ in range(64):
+            for _ in range(256):
                 x = x ^ iv
                 x = x ^ k
                 x = x ^ c
