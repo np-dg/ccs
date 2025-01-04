@@ -277,7 +277,7 @@ class GPUTaskValidator(Module):
 
         return min(1, score)
 
-    def _validate_pow_task_result(result: PowTaskResult) -> bool:
+    def _validate_pow_task_result(self,result: PowTaskResult) -> bool:
         return validate_pow(result)
 
     def get_miner_task(self, task_type=TaskType.POW) -> Task:

@@ -16,12 +16,12 @@ def serve(
     commune_key: Annotated[
         str, typer.Argument(help="Name of the key present in `~/.commune/key`")
     ],
-    call_timeout: int = 65,
 ):
     keypair = classic_load_key(commune_key)  # type: ignore
     settings = ValidatorSettings()  # type: ignore
-    c_client = CommuneClient(get_node_url(use_testnet=True))
-    subnet_uid = get_subnet_netuid(c_client, "ccs")
+    call_timeout=settings.call_timeout,
+    c_client = CommuneClient(get_node_url(use_testnet=settings.use_testnet))
+    subnet_uid = get_subnet_netuid(c_client, settings.subnet_name)
     validator = GPUTaskValidator(
         keypair,
         subnet_uid,

@@ -58,7 +58,7 @@ class PowTaskResult(TaskResult):
         self.nonce = nonce
 
     def serialize(self):
-        return json.dumps({"task": self.task.serialize(), "nonce": self.nonce})
+        return json.dumps({"task": self.task.serialize(), "nonce": int(self.nonce)})
 
     @classmethod
     def deserialize(cls, serialized: str):

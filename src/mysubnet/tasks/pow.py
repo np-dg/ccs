@@ -131,7 +131,7 @@ def pow(data, difficulty):
 
 def validate_pow(result: PowTaskResult):
     target_value = 2 ** (64 - result.task.difficulty)
-    final_hash = hash(result.task.data + str(result.nonce))
+    final_hash = hash(result.task.data ,result.nonce)
     if final_hash < target_value:
         return True
 
