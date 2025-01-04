@@ -7,19 +7,31 @@ import string
 from .tasks import PowTaskResult
 
 
-def hash(value: str):
+def hash(value: str, nonce: int):
     q = np.uint64(18446744073709551557)
-    x = np.uint64(int.from_bytes(value.encode(), "big"))
+    value = np.uint64(int.from_bytes(value.encode(), "big"))
     k = np.uint64(3472328296227680304)
     c = np.uint64(8241990170776528228)
 
-    for _ in range(256):
-        x = x ^ k
-        x = x ^ c
-        x = np.uint64(x ** 3)
-        x = np.uint64(x % q)
+    nonce = np.uint64(nonce)
+    values = [value, nonce]
 
-    return x
+    def f(x, iv):
+        x = x ^ iv
+        for _ in range(256):
+            x = x ^ k
+            x = x ^ c
+            x = uint64(x ** 3)
+            x = uint64(x % q)
+
+        return x
+
+    iv = 2**64 - 1
+    for x in values:
+        hash = f(x, iv)
+        iv = iv ^ hash
+
+    return hash
 
 
 @cuda.jit
@@ -37,8 +49,8 @@ def pow_kernel(values, nonces, result, target):
         value[1] = uint64(nonce)
 
         def f(x, iv):
+            x = x ^ iv
             for _ in range(256):
-                x = x ^ iv
                 x = x ^ k
                 x = x ^ c
                 x = uint64(x ** 3)
@@ -109,7 +121,7 @@ def pow(data, difficulty):
     target = 2 ** (64 - difficulty)
     nonce = 0
     while True:
-        candidate = hash(data + str(nonce))
+        candidate = hash(data, nonce)
 
         if candidate < target:
             return nonce
@@ -129,17 +141,18 @@ def validate_pow(result: PowTaskResult):
 if __name__ == "__main__":
     pool = string.ascii_letters + string.digits + string.punctuation
     data = ''.join(random.choice(pool) for _ in range(8))
+    difficulty = 3 * 4
     start_time = time.time()
-    nonce = pow_gpu(data, 3 * 4)
+    nonce = pow(data, difficulty)
     end_time = time.time()
 
-    final_hash = hash(data + str(nonce))
+    final_hash = hash(data, nonce)
 
     # Verify that the final hash meets the target condition
-    target_value = 2 ** (64 - 3 * 4)
+    target_value = 2 ** (64 - difficulty)
     assert final_hash < target_value, "Final hash does not meet the target condition."
 
     print(f"Mining successful for {data} !\nNonce: {nonce}")
-    print(f"Initial Hash: {hex(hash(data))[2:].zfill(16)}")
+    print(f"Initial Hash: {hex(hash(data, 0))[2:].zfill(16)}")
     print(f"Final Hash: {hex(final_hash)[2:].zfill(16)}")
     print(f"Time taken: {end_time - start_time:.2f} seconds")
