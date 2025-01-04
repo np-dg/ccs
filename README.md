@@ -115,7 +115,6 @@ Users benefit from:
 - Integrate GPU-optimized PoW.
 
 ### Phase 2: Use Case Expansion
-- Introduce decentralized governance.
 - Implement Docker layers for GPU tasks.
 
 ### Phase 3: Rental Features
