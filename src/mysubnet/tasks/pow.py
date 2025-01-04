@@ -141,9 +141,9 @@ def validate_pow(result: PowTaskResult):
 if __name__ == "__main__":
     pool = string.ascii_letters + string.digits + string.punctuation
     data = ''.join(random.choice(pool) for _ in range(8))
-    difficulty = 3 * 4
+    difficulty = 8 * 4
     start_time = time.time()
-    nonce = pow(data, difficulty)
+    nonce = pow_gpu(data, difficulty)
     end_time = time.time()
 
     final_hash = hash(data, nonce)
